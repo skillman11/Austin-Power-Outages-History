@@ -1,3 +1,8 @@
+# scrape.yml v1.2
+# v1.0 - Initial version, runs every 5 minutes
+# v1.1 - Changed to every 1 minute
+# v1.2 - Pinned action versions for Node.js 24, added retry loop for push conflicts
+
 name: Scrape Austin Energy Outages
 
 on:
@@ -8,16 +13,16 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
-
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
+        with:
+          ref: main
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.6.0
         with:
           python-version: '3.11'
 
@@ -32,6 +37,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
-          git diff --cached --quiet || git commit -m "Outage snapshot $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          git pull --rebase origin main
-          git push
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Outage snapshot $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && break
+            echo "Retry $i..."
+            sleep 5
+          done
