@@ -1,46 +1,59 @@
-# scrape.yml v1.2
-# v1.0 - Initial version, runs every 5 minutes
-# v1.1 - Changed to every 1 minute
-# v1.2 - Pinned action versions for Node.js 24, added retry loop for push conflicts
+# scrape.py v1.1
+# v1.0 - Initial version, basic state fetch only
+# v1.1 - Now follows Kubra data paths to get actual outage counts and locations
+# why was the wrong file posted twice?
+import requests
+import json
+import os
+from datetime import datetime, timezone
 
-name: Scrape Austin Energy Outages
+INSTANCE_ID = "dd9c446f-f6b8-43f9-8f80-83f5245c60a1"
+VIEW_ID = "76446308-a901-4fa3-849c-3dd569933a51"
+BASE_URL = "https://kubra.io"
 
-on:
-  schedule:
-    - cron: '*/1 * * * *'
-  workflow_dispatch:
+def get(url):
+    headers = {"User-Agent": "Mozilla/5.0"}
+    resp = requests.get(url, headers=headers, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
 
-jobs:
-  scrape:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@v4.2.2
-        with:
-          ref: main
+def main():
+    timestamp = datetime.now(timezone.utc)
+    print(f"Scraping at {timestamp.isoformat()}")
 
-      - name: Set up Python
-        uses: actions/setup-python@v5.6.0
-        with:
-          python-version: '3.11'
+    state = get(f"{BASE_URL}/stormcenter/api/v1/stormcenters/{INSTANCE_ID}/views/{VIEW_ID}/currentState?preview=false")
+    interval_path = state.get("data", {}).get("interval_generation_data")
 
-      - name: Install dependencies
-        run: pip install requests
+    snapshot = {"current_state": state}
 
-      - name: Run scraper
-        run: python scrape.py
+    if interval_path:
+        try:
+            summary = get(f"{BASE_URL}/{interval_path}/public/summary-1/data.json")
+            snapshot["summary"] = summary
+            print("Got summary data")
+        except Exception as e:
+            print(f"Could not get summary: {e}")
 
-      - name: Commit and push data
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/
-          git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "Outage snapshot $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          for i in 1 2 3; do
-            git pull --rebase origin main && git push && break
-            echo "Retry $i..."
-            sleep 5
-          done
+        try:
+            report = get(f"{BASE_URL}/{interval_path}/public/report.json")
+            snapshot["report"] = report
+            print("Got report data")
+        except Exception as e:
+            print(f"Could not get report: {e}")
+
+        try:
+            thematic = get(f"{BASE_URL}/{interval_path}/public/thematic-1/data.json")
+            snapshot["thematic"] = thematic
+            print("Got thematic data")
+        except Exception as e:
+            print(f"Could not get thematic: {e}")
+
+    os.makedirs("data", exist_ok=True)
+    date_str = timestamp.strftime("%Y-%m-%d")
+    filepath = f"data/{date_str}.jsonl"
+    with open(filepath, "a") as f:
+        f.write(json.dumps({"timestamp": timestamp.isoformat(), "snapshot": snapshot}) + "\n")
+    print(f"Saved to {filepath}")
+
+if __name__ == "__main__":
+    main()
