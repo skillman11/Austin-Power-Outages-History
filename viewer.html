@@ -1,5 +1,5 @@
 <!--
-  viewer.html v2.1
+  viewer.html v2.2
   Purpose: Browser-based dashboard for viewing historical Austin Energy outage data with map overlay
   How it works: Fetches .jsonl snapshot files from the GitHub repo and displays outage counts
                 over time as a chart, plus plots individual outage locations on a Leaflet map.
@@ -9,8 +9,8 @@
   v1.0 - Initial version, chart and outage event list only
   v2.0 - Added Leaflet map with outage location markers, time slider to replay the day
   v2.01 - Auto-loads data on page open
-  v2.1 - Fully responsive layout: desktop = two column, mobile = single column stacked,
-          touch-friendly slider and controls, map height adapts to screen size
+  v2.1 - Fully responsive layout for mobile and desktop
+  v2.2 - Map first full width, chart below, latest events on top, map never disappears at any resolution
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -41,7 +41,7 @@
     gap: 8px;
     margin-bottom: 16px;
   }
-  .repo-input input, .repo-input input[type="date"] {
+  .repo-input input {
     width: 100%;
     background: #1e2433;
     border: 0.5px solid #334155;
@@ -90,9 +90,14 @@
   }
   .card-title { font-size: 13px; font-weight: 500; color: #94a3b8; margin-bottom: 12px; }
 
-  .chart-wrap { position: relative; width: 100%; height: 200px; }
-
-  #map { width: 100%; height: 300px; border-radius: 8px; }
+  /* Map is always full width, height scales with viewport */
+  #map {
+    width: 100%;
+    height: 50vw;
+    min-height: 280px;
+    max-height: 600px;
+    border-radius: 8px;
+  }
 
   .slider-row {
     display: flex;
@@ -108,6 +113,8 @@
     cursor: pointer;
     touch-action: manipulation;
   }
+
+  .chart-wrap { position: relative; width: 100%; height: 200px; }
 
   .event-row {
     display: flex;
@@ -128,28 +135,14 @@
   .no-geo { font-size: 12px; color: #475569; padding: 8px 0; }
   .loading { text-align: center; padding: 40px 20px; color: #64748b; font-size: 14px; }
 
-  /* Desktop: two column layout */
   @media (min-width: 768px) {
     body { padding: 24px; }
     h1 { font-size: 22px; }
-    .repo-input {
-      grid-template-columns: 1fr 1fr 1fr auto;
-    }
-    .repo-input .load-btn {
-      grid-column: auto;
-      padding: 10px 24px;
-      font-size: 14px;
-    }
+    .repo-input { grid-template-columns: 1fr 1fr 1fr auto; }
+    .repo-input .load-btn { grid-column: auto; padding: 10px 24px; font-size: 14px; }
     .metrics { grid-template-columns: repeat(4, 1fr); }
     .metric-value { font-size: 28px; }
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    .two-col .card { margin-bottom: 0; }
     .chart-wrap { height: 240px; }
-    #map { height: 380px; }
   }
 </style>
 </head>
@@ -173,27 +166,31 @@
 </div>
 
 <div id="mainContent" style="display:none">
-  <div class="two-col">
-    <div class="card">
-      <div class="card-title">Customers affected over time</div>
-      <div class="chart-wrap"><canvas id="outageChart" role="img" aria-label="Line chart of customers affected over time"></canvas></div>
+
+  <!-- MAP FIRST, FULL WIDTH -->
+  <div class="card">
+    <div class="card-title">Outage locations — <span id="mapTimeLabel">latest</span></div>
+    <div id="map"></div>
+    <div class="slider-row">
+      <span>Earlier</span>
+      <input type="range" id="timeSlider" min="0" value="0" step="1" oninput="onSliderChange(this.value)"/>
+      <span>Latest</span>
     </div>
-    <div class="card">
-      <div class="card-title">Outage locations — <span id="mapTimeLabel">latest</span></div>
-      <div id="map"></div>
-      <div class="slider-row">
-        <span>Earlier</span>
-        <input type="range" id="timeSlider" min="0" value="0" step="1" oninput="onSliderChange(this.value)"/>
-        <span>Latest</span>
-      </div>
-      <div id="noGeoMsg" class="no-geo" style="display:none">No location data in this snapshot yet.</div>
-    </div>
+    <div id="noGeoMsg" class="no-geo" style="display:none">No location data in this snapshot yet.</div>
   </div>
 
+  <!-- CHART BELOW -->
   <div class="card">
-    <div class="card-title">Outage events (snapshots with more than 0 customers affected)</div>
+    <div class="card-title">Customers affected over time</div>
+    <div class="chart-wrap"><canvas id="outageChart" role="img" aria-label="Line chart of customers affected over time"></canvas></div>
+  </div>
+
+  <!-- EVENTS, LATEST ON TOP -->
+  <div class="card">
+    <div class="card-title">Outage events — latest first</div>
     <div id="eventsList"></div>
   </div>
+
 </div>
 
 <div id="statusMsg" class="loading">Loading today's outage data...</div>
@@ -244,8 +241,7 @@ function showOutagesOnMap(record) {
 function onSliderChange(val) {
   const record = allRecords[parseInt(val)];
   if (!record) return;
-  const ts = new Date(record.timestamp);
-  document.getElementById('mapTimeLabel').textContent = ts.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true});
+  document.getElementById('mapTimeLabel').textContent = new Date(record.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true});
   showOutagesOnMap(record);
 }
 
@@ -260,9 +256,7 @@ async function loadData() {
   try {
     const resp = await fetch(url);
     if (!resp.ok) {
-      showStatus(resp.status === 404
-        ? `No data found for ${date}. Try a different date.`
-        : `Error: HTTP ${resp.status}`);
+      showStatus(resp.status === 404 ? `No data found for ${date}. Try a different date.` : `Error: HTTP ${resp.status}`);
       return;
     }
     const text = await resp.text();
@@ -278,6 +272,7 @@ function renderDashboard(records) {
   document.getElementById('statusMsg').style.display = 'none';
   const timestamps=[], custAffected=[], outageEvents=[];
   let peakCust=0, peakOutages=0, totalCust=0;
+
   for (const rec of records) {
     const ts = new Date(rec.timestamp);
     timestamps.push(ts.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true}));
@@ -289,8 +284,9 @@ function renderDashboard(records) {
     if (cust > peakCust) peakCust = cust;
     if (outages > peakOutages) peakOutages = outages;
     if (total > totalCust) totalCust = total;
-    if (cust > 0) outageEvents.push({time:timestamps[timestamps.length-1], cust, outages});
+    if (cust > 0) outageEvents.push({time: timestamps[timestamps.length-1], cust, outages});
   }
+
   document.getElementById('metPeak').textContent = peakCust.toLocaleString();
   document.getElementById('metOutages').textContent = peakOutages.toLocaleString();
   document.getElementById('metSnaps').textContent = records.length.toLocaleString();
@@ -310,10 +306,12 @@ function renderDashboard(records) {
     }
   });
 
+  // Latest events on top
   const eventsList = document.getElementById('eventsList');
-  eventsList.innerHTML = outageEvents.length === 0
+  const reversed = [...outageEvents].reverse();
+  eventsList.innerHTML = reversed.length === 0
     ? '<div class="event-row" style="color:#64748b">No outages detected on this date.</div>'
-    : outageEvents.map(e=>`<div class="event-row"><span class="event-time"><span class="dot-red"></span>${e.time}</span><span class="event-customers">${e.cust.toLocaleString()} customers affected</span><span class="event-outages">${e.outages} outage${e.outages!==1?'s':''}</span></div>`).join('');
+    : reversed.map(e=>`<div class="event-row"><span class="event-time"><span class="dot-red"></span>${e.time}</span><span class="event-customers">${e.cust.toLocaleString()} customers affected</span><span class="event-outages">${e.outages} outage${e.outages!==1?'s':''}</span></div>`).join('');
 
   initMap();
   const slider = document.getElementById('timeSlider');
