@@ -1,5 +1,5 @@
 <!--
-  viewer.html v2.0
+  viewer.html v2.01
   Purpose: Browser-based dashboard for viewing historical Austin Energy outage data with map overlay
   How it works: Fetches .jsonl snapshot files from the GitHub repo and displays outage counts
                 over time as a chart, plus plots individual outage locations on a Leaflet map.
@@ -255,6 +255,7 @@ function hideAll() {
   document.getElementById('metrics').style.display = 'none';
   document.getElementById('mainContent').style.display = 'none';
 }
+  loadData();
 </script>
 </body>
 </html>
