@@ -1,11 +1,12 @@
 <!--
-  viewer.html v2.35
+  viewer.html v2.36
   Purpose: Browser-based dashboard for viewing historical Austin Energy outage data with map overlay
   How it works: Fetches .jsonl snapshot files from the GitHub repo and displays outage counts
                 over time as a chart, plus plots individual outage locations on a Leaflet map.
   Data source: data/YYYY-MM-DD.jsonl files collected by scrape.py via scrape.yml GitHub Action
   Linked files: depends on scrape.py (data collection) and scrape.yml (scheduler)
   Hosted at: https://skillman11.github.io/Austin-Power-Outages-History/viewer.html
+  v2.36 - Map height +14%, boundary dark blue, clicking outage circle zooms in and centers on it
   v2.35 - Zoom back to 11, map height increased to 750px desktop/500px mobile, higher contrast map tiles
   v2.34 - Zoomed out and recentered to fit full service area boundary
   v2.33 - Switched to light map tiles matching official AE service area map style, fixed boundary overlay
@@ -102,8 +103,8 @@
   #map {
     width: 100%;
     height: calc(100vw - 32px);
-    min-height: 350px;
-    max-height: 600px;
+    min-height: 399px;
+    max-height: 684px;
     border-radius: 8px;
   }
 
@@ -153,8 +154,8 @@
     .chart-wrap { height: 240px; }
     /* Desktop: map fixed height, page max width to avoid extreme stretching */
     #map {
-      height: 750px;
-      max-height: 750px;
+      height: 855px;
+      max-height: 855px;
     }
   }
 </style>
@@ -241,9 +242,9 @@ function initMap() {
     .then(data => {
       L.geoJSON(data, {
         style: {
-          color: '#e85d04',
+          color: '#1a3a6b',
           weight: 2.5,
-          fillColor: '#e85d04',
+          fillColor: '#1a3a6b',
           fillOpacity: 0.06,
           dashArray: '6 4'
         }
@@ -275,6 +276,9 @@ function showOutagesOnMap(record) {
     const etr = o.etr ? `<br>ETR: ${new Date(o.etr).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}` : '';
     const crew = o.crewStatus ? `<br>Crew: ${o.crewStatus}` : '';
     circle.bindPopup(`<strong>${o.custAffected||0} customers affected</strong>${cause}${etr}${crew}`);
+    circle.on('click', function(e) {
+      map.setView(e.target.getLatLng(), 14, {animate: true});
+    });
     markers.push(circle);
   });
 }
