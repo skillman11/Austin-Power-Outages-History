@@ -1,11 +1,12 @@
 <!--
-  viewer.html v2.33
+  viewer.html v2.34
   Purpose: Browser-based dashboard for viewing historical Austin Energy outage data with map overlay
   How it works: Fetches .jsonl snapshot files from the GitHub repo and displays outage counts
                 over time as a chart, plus plots individual outage locations on a Leaflet map.
   Data source: data/YYYY-MM-DD.jsonl files collected by scrape.py via scrape.yml GitHub Action
   Linked files: depends on scrape.py (data collection) and scrape.yml (scheduler)
   Hosted at: https://skillman11.github.io/Austin-Power-Outages-History/viewer.html
+  v2.34 - Zoomed out and recentered to fit full service area boundary
   v2.33 - Switched to light map tiles matching official AE service area map style, fixed boundary overlay
   v2.32 - Max-width reduced to 800px, Austin Energy service area boundary overlay on map
   v2.31 - Page max-width 1100px centered, map height 640px on desktop for better aspect ratio
@@ -215,11 +216,11 @@ let allRecords = [];
 // Austin Energy service area bounds
 // SW corner: roughly Buda/Kyle area, NE corner: roughly Pflugerville/Manor
 const AE_BOUNDS = L.latLngBounds(
-  L.latLng(29.95, -98.05),  // SW
-  L.latLng(30.55, -97.40)   // NE
+  L.latLng(29.85, -98.20),  // SW
+  L.latLng(30.65, -97.25)   // NE
 );
-const AE_CENTER = [30.25, -97.75];
-const AE_ZOOM = 11;
+const AE_CENTER = [30.27, -97.72];
+const AE_ZOOM = 10;
 
 document.getElementById('dateSelect').value = new Date().toISOString().split('T')[0];
 
