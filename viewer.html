@@ -1,11 +1,12 @@
 <!--
-  viewer.html v2.34
+  viewer.html v2.35
   Purpose: Browser-based dashboard for viewing historical Austin Energy outage data with map overlay
   How it works: Fetches .jsonl snapshot files from the GitHub repo and displays outage counts
                 over time as a chart, plus plots individual outage locations on a Leaflet map.
   Data source: data/YYYY-MM-DD.jsonl files collected by scrape.py via scrape.yml GitHub Action
   Linked files: depends on scrape.py (data collection) and scrape.yml (scheduler)
   Hosted at: https://skillman11.github.io/Austin-Power-Outages-History/viewer.html
+  v2.35 - Zoom back to 11, map height increased to 750px desktop/500px mobile, higher contrast map tiles
   v2.34 - Zoomed out and recentered to fit full service area boundary
   v2.33 - Switched to light map tiles matching official AE service area map style, fixed boundary overlay
   v2.32 - Max-width reduced to 800px, Austin Energy service area boundary overlay on map
@@ -101,8 +102,8 @@
   #map {
     width: 100%;
     height: calc(100vw - 32px);
-    min-height: 300px;
-    max-height: 520px;
+    min-height: 350px;
+    max-height: 600px;
     border-radius: 8px;
   }
 
@@ -152,8 +153,8 @@
     .chart-wrap { height: 240px; }
     /* Desktop: map fixed height, page max width to avoid extreme stretching */
     #map {
-      height: 640px;
-      max-height: 640px;
+      height: 750px;
+      max-height: 750px;
     }
   }
 </style>
@@ -220,7 +221,7 @@ const AE_BOUNDS = L.latLngBounds(
   L.latLng(30.65, -97.25)   // NE
 );
 const AE_CENTER = [30.27, -97.72];
-const AE_ZOOM = 10;
+const AE_ZOOM = 11;
 
 document.getElementById('dateSelect').value = new Date().toISOString().split('T')[0];
 
@@ -230,8 +231,8 @@ function initMap() {
     maxBounds: AE_BOUNDS,
     maxBoundsViscosity: 0.8
   }).setView(AE_CENTER, AE_ZOOM);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 18
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
   }).addTo(map);
 
   // Load Austin Energy service area boundary from City of Austin ArcGIS service
