@@ -1,11 +1,12 @@
 <!--
-  viewer.html v2.38
+  viewer.html v2.39
   Purpose: Browser-based dashboard for viewing historical Austin Energy outage data with map overlay
   How it works: Fetches .jsonl snapshot files from the GitHub repo and displays outage counts
                 over time as a chart, plus plots individual outage locations on a Leaflet map.
   Data source: data/YYYY-MM-DD.jsonl files collected by scrape.py via scrape.yml GitHub Action
   Linked files: depends on scrape.py (data collection) and scrape.yml (scheduler)
   Hosted at: https://skillman11.github.io/Austin-Power-Outages-History/viewer.html
+  v2.39 - Full viewport width layout, chart and table scale to screen size, larger fonts on big displays
   v2.38 - Recentered on downtown Austin, expanded top/right, reduced bottom/left
   v2.37 - Shifted map center west to include full Lake Travis/western boundary
   v2.36 - Map height +14%, boundary dark blue, clicking outage circle zooms in and centers on it
@@ -39,7 +40,7 @@
     color: #e2e8f0;
     min-height: 100vh;
     padding: 16px;
-    max-width: 800px;
+    max-width: 1600px;
     margin: 0 auto;
   }
 
@@ -125,7 +126,7 @@
     touch-action: manipulation;
   }
 
-  .chart-wrap { position: relative; width: 100%; height: 200px; }
+  .chart-wrap { position: relative; width: 100%; height: clamp(200px, 25vh, 500px); }
 
   .event-row {
     display: flex;
@@ -146,6 +147,16 @@
   .no-geo { font-size: 12px; color: #475569; padding: 8px 0; }
   .loading { text-align: center; padding: 40px 20px; color: #64748b; font-size: 14px; }
 
+  @media (min-width: 1600px) {
+    body { font-size: 18px; }
+    h1 { font-size: 32px; }
+    .subtitle { font-size: 16px; }
+    .metric-label { font-size: 14px; }
+    .metric-value { font-size: 42px; }
+    .card-title { font-size: 18px; }
+    .event-row { font-size: 17px; padding: 14px 0; }
+  }
+
   @media (min-width: 768px) {
     body { padding: 24px; }
     h1 { font-size: 22px; }
@@ -153,11 +164,11 @@
     .repo-input .load-btn { grid-column: auto; padding: 10px 24px; font-size: 14px; }
     .metrics { grid-template-columns: repeat(4, 1fr); }
     .metric-value { font-size: 28px; }
-    .chart-wrap { height: 240px; }
+    .chart-wrap { height: clamp(240px, 28vh, 500px); }
     /* Desktop: map fixed height, page max width to avoid extreme stretching */
     #map {
-      height: 855px;
-      max-height: 855px;
+      height: clamp(500px, 70vh, 1000px);
+      max-height: 1000px;
     }
   }
 </style>
@@ -343,12 +354,12 @@ function renderDashboard(records) {
 
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(document.getElementById('outageChart').getContext('2d'), {
-    type: 'line',
-    data: { labels: timestamps, datasets: [{label:'Customers affected', data:custAffected, borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.08)', borderWidth:1.5, pointRadius:0, fill:true, tension:0.3}] },
+    type: 'bar',
+    data: { labels: timestamps, datasets: [{label:'Customers affected', data:custAffected, backgroundColor:'rgba(239,68,68,0.75)', borderColor:'#cc0000', borderWidth:1, borderRadius:3}] },
     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
       scales: {
-        x:{ticks:{color:'#475569',maxTicksLimit:6,font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
-        y:{ticks:{color:'#475569',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'},min:0}
+        x:{ticks:{color:'#475569',maxTicksLimit:8,font:{size:Math.max(11,Math.round(window.innerWidth/120))}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{ticks:{color:'#475569',font:{size:Math.max(11,Math.round(window.innerWidth/120))}},grid:{color:'rgba(255,255,255,0.04)'},min:0}
       }
     }
   });
