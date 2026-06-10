@@ -1,5 +1,5 @@
 <!--
-  viewer.html v2.42
+  viewer.html v2.44
   Purpose: Browser-based dashboard for viewing historical Austin Energy outage data with map overlay
   How it works: Fetches .jsonl snapshot files from the GitHub repo and displays outage counts
                 over time as a bar chart, plots individual outage locations on a Leaflet map,
@@ -7,6 +7,8 @@
   Data source: data/YYYY-MM-DD.jsonl files collected by scrape.py via scrape.yml GitHub Action
   Linked files: depends on scrape.py (data collection) and scrape.yml (scheduler)
   Hosted at: https://skillman11.github.io/Austin-Power-Outages-History/viewer.html
+  v2.44 - Title fits one line on mobile using fluid font size
+  v2.43 - Auto-refresh every 2 minutes, touch-friendly slider, smaller title on mobile
   v2.42 - Fixed Leaflet load order error, map initializes after page fully loaded
   v2.41 - Date picker inline with metrics, outage events under chart, bigger fonts, disclaimer footer
   v2.40 - Removed repo/user controls, date picker only, map+chart side by side, bigger fonts
@@ -48,7 +50,7 @@
     margin: 0 auto;
   }
 
-  h1 { font-size: 26px; font-weight: 600; color: #f1f5f9; margin-bottom: 2px; }
+  h1 { font-size: clamp(15px, 4vw, 20px); font-weight: 600; color: #f1f5f9; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .subtitle { font-size: 15px; color: #64748b; margin-bottom: 14px; }
 
   /* TOP ROW: metrics + date picker */
@@ -136,10 +138,11 @@
   .slider-row span { font-size: 13px; color: #64748b; white-space: nowrap; }
   .slider-row input[type=range] {
     flex: 1;
-    height: 36px;
+    height: 44px;
     accent-color: #ef4444;
     cursor: pointer;
-    touch-action: manipulation;
+    touch-action: pan-x;
+    -webkit-appearance: none;
   }
 
   .chart-wrap {
@@ -194,6 +197,9 @@
   }
 
   /* 4K scaling */
+  @media (min-width: 768px) {
+    h1 { font-size: 28px; white-space: normal; }
+  }
   @media (min-width: 1600px) {
     h1 { font-size: 36px; }
     .subtitle { font-size: 18px; }
@@ -412,7 +418,15 @@ function showStatus(msg) {
   el.textContent = msg;
 }
 
-document.addEventListener("DOMContentLoaded", function() { loadData(); });
+document.addEventListener("DOMContentLoaded", function() {
+  loadData();
+  // Auto-refresh every 2 minutes to stay current
+  setInterval(function() {
+    const date = document.getElementById('dateSelect').value;
+    const today = new Date().toISOString().split('T')[0];
+    if (date === today) loadData();
+  }, 120000);
+});
 </script>
 </body>
 </html>
